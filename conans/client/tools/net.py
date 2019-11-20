@@ -69,10 +69,13 @@ def download(url, filename, cache="", sha256="", verify=True, out=None, retry=No
         if not sha256:
             raise ConanException("The sha256 checksum of the file is required if the cache "
                                  "is enabled")
-        if not os.path.isdir(cache):
-            raise ConanException("Cache isn't a valid directory")
 
         cache = os.path.abspath(cache)
+        if not os.path.exists(cache):
+            os.makedirs(cache)
+        elif not os.path.isdir(cache):
+            raise ConanException("Cache exists but isn't a directory")
+
         target = os.path.join(cache, sha256, filename)
         if os.path.isfile(target):
             check_sha256(target, sha256)
