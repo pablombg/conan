@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from conans.client.rest.uploader_downloader import FileDownloader
 from conans.client.tools.files import check_md5, check_sha1, check_sha256, unzip
@@ -53,9 +54,8 @@ def ftp_download(ip, filename, login='', password=''):
             pass
 
 
-def download(url, filename, verify=True, out=None, retry=None, retry_wait=None, overwrite=False,
-             auth=None, headers=None, requester=None):
-
+def download(url, filename, cache="", sha256="", verify=True, out=None, retry=None, retry_wait=None,
+             overwrite=False, auth=None, headers=None, requester=None):
     out = default_output(out, 'conans.client.tools.net.download')
     requester = default_requester(requester, 'conans.client.tools.net.download')
 
@@ -65,7 +65,35 @@ def download(url, filename, verify=True, out=None, retry=None, retry_wait=None, 
     retry_wait = retry_wait if retry_wait is not None else getattr(requester, "retry_wait", None)
     retry_wait = retry_wait if retry_wait is not None else 5
 
+    if cache:
+        if not sha256:
+            raise ConanException("The sha256 checksum of the file is required if the cache "
+                                 "is enabled")
+        if not os.path.isdir(cache):
+            raise ConanException("Cache isn't a valid directory")
+
+        cache = os.path.abspath(cache)
+        target = os.path.join(cache, sha256, filename)
+        if os.path.isfile(target):
+            check_sha256(target, sha256)
+            shutil.copy(target, os.getcwd())
+            out.writeln("Download: Using cached file {} (sha256: {})".format(filename, sha256))
+            return
+
     downloader = FileDownloader(requester=requester, output=out, verify=verify)
     downloader.download(url, filename, retry=retry, retry_wait=retry_wait, overwrite=overwrite,
                         auth=auth, headers=headers)
+
+    if sha256:
+        check_sha256(filename, sha256)
+
+    if cache:
+        hashdir = os.path.join(cache, sha256)
+        if not os.path.exists(hashdir):
+            os.mkdir(hashdir)
+        elif not os.path.isdir(hashdir):
+            raise ConanException("The sha256 exists in the cache but isn't a directory")
+
+        shutil.copy(filename, hashdir)
+
     out.writeln("")
