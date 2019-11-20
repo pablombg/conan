@@ -75,12 +75,14 @@ def download(url, filename, cache="", sha256="", verify=True, out=None, retry=No
             os.makedirs(cache)
         elif not os.path.isdir(cache):
             raise ConanException("Cache exists but isn't a directory")
+        out.writeln("Download: Using cache: '{}'".format(cache))
 
         target = os.path.join(cache, sha256, filename)
         if os.path.isfile(target):
             check_sha256(target, sha256)
             shutil.copy(target, os.getcwd())
-            out.writeln("Download: Using cached file {} (sha256: {})".format(filename, sha256))
+            out.writeln("Download: Using cached file '{}' (sha256: {})".format(filename, sha256))
+            out.writeln("")
             return
 
     downloader = FileDownloader(requester=requester, output=out, verify=verify)
@@ -98,5 +100,6 @@ def download(url, filename, cache="", sha256="", verify=True, out=None, retry=No
             raise ConanException("The sha256 exists in the cache but isn't a directory")
 
         shutil.copy(filename, hashdir)
+        out.writeln("Download: Caching file '{}' (sha256: {})".format(filename, sha256))
 
     out.writeln("")
